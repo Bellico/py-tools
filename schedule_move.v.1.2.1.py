@@ -93,8 +93,6 @@ def copy_folder(folder_source_path: str, folder_destination_path: str) -> int:
             if not os.path.exists(file_destination_path):
                 # Copy file in the destination with an equivalent path
                 try_copy(file_source_path, file_destination_path)
-                print(date.now().strftime("%H:%M:%S"), "|",
-                      file_source_path, GREEN + "Copied!", EC)
 
         # Handle folder as recursively
         elif os.path.isdir(file_source_path):
