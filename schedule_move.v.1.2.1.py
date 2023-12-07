@@ -3,8 +3,8 @@ import shutil
 import time
 import re
 import logging
-import schedule
 from datetime import datetime as date
+import schedule
 from tqdm import tqdm
 RED = '\033[31m'
 GREEN = '\033[32m'
@@ -27,6 +27,14 @@ MANDATORY_FILES = [
 logging.basicConfig(filename=LOG_FILE, level=logging.INFO,
                     format='%(asctime)s %(levelname)s %(message)s', filemode='a')
 logger = logging.getLogger()
+
+
+def printlog(messagelog, color=""):
+    print(color + messagelog + EC)
+    if color == RED:
+        logger.error(messagelog)
+    else:
+        logger.info(messagelog)
 
 
 def progress_copy(file_source_path: str, file_destination_path: str):
@@ -78,6 +86,9 @@ def try_copy(file_source_path: str, file_destination_path: str, retry_count=0) -
 def copy_folder(folder_source_path: str, folder_destination_path: str) -> int:
     error_count = 0
 
+    if not os.path.exists(folder_destination_path):
+        os.mkdir(folder_destination_path)
+
     for path in os.listdir(folder_source_path):
         file_source_path = os.path.join(folder_source_path, path)
         file_destination_path = os.path.join(folder_destination_path, path)
@@ -92,16 +103,24 @@ def copy_folder(folder_source_path: str, folder_destination_path: str) -> int:
             # Check if the file does not already exist
             if not os.path.exists(file_destination_path):
                 # Copy file in the destination with an equivalent path
-                try_copy(file_source_path, file_destination_path)
+                error_count += try_copy(file_source_path,
+                                        file_destination_path)
 
         # Handle folder as recursively
         elif os.path.isdir(file_source_path):
-            if not os.path.exists(file_destination_path):
-                os.mkdir(file_destination_path)
-
             error_count += copy_folder(file_source_path, file_destination_path)
 
     return error_count
+
+
+def move_folder(folder_source_path: str, folder_destination_path: str):
+    copy_folder(folder_source_path, folder_destination_path)
+    shutil.rmtree(folder_source_path)
+
+
+def move_file(file_source_path: str, file_destination_path: str):
+    try_copy(file_source_path, file_destination_path)
+    os.remove(file_source_path)
 
 
 def is_file_match(entry_name: str) -> bool:
@@ -129,47 +148,45 @@ def move_files():
         print("Nothing to move")
         return
 
-    print("Processing start...")
-    logger.info("Processing start")
+    printlog("Processing start:")
 
     for file_name in file_list:
         source_path = os.path.join(SOURCE_FOLDER, file_name)
         destination_path = os.path.join(DESTINATION_FOLDER, file_name)
         error_path = os.path.join(ERROR_FOLDER, file_name)
+        is_dir = os.path.isdir(source_path)
 
-        if os.path.isdir(source_path) and os.path.exists(destination_path):
-            shutil.move(source_path, error_path)
-            print(RED + "Folder already in destination: " + file_name + EC)
-            logger.info("Folder already in destination: " + file_name)
+        # Error
+        if is_dir and os.path.exists(destination_path):
+            move_folder(source_path, error_path)
+            printlog("Folder already in destination: " + file_name, RED)
             continue
 
-        if os.path.isdir(source_path) and not have_all_mandatory_file(source_path):
-            shutil.move(source_path, error_path)
-            print(RED + "Folder with errors: " + file_name + EC)
-            logger.info("Folder with errors: " + file_name)
+        if is_dir and not have_all_mandatory_file(source_path):
+            move_folder(source_path, error_path)
+            printlog("Folder with errors: " + file_name, RED)
             continue
 
+        # Copy
         if DUPLICATE_FOLDER:
             duplicate_path = os.path.join(DUPLICATE_FOLDER, file_name)
 
-            if os.path.isfile(source_path):
-                try_copy(source_path, duplicate_path)
-            elif os.path.isdir(source_path):
-                if not os.path.exists(duplicate_path):
-                    os.mkdir(duplicate_path)
-
-                print(YELLOW + f"[{file_name}] Copy start :" + EC)
+            if is_dir:
                 copy_folder(source_path, duplicate_path)
-                print(YELLOW + "Copied folder : " + file_name + EC)
-                logger.info("Copied folder : " + file_name)
+                printlog("Copied folder : " + file_name, YELLOW)
+            else:
+                try_copy(source_path, duplicate_path)
+                printlog("Copied file : " + file_name, YELLOW)
 
-        typefile = 'File' if os.path.isfile(source_path) else 'Folder'
-        shutil.move(source_path, destination_path)
-        print(YELLOW + "Moved " + typefile + " : " + file_name + EC)
-        logger.info("Moved " + typefile + " : " + file_name)
+        # Move
+        if is_dir:
+            move_folder(source_path, destination_path)
+            printlog("Moved folder: " + file_name, YELLOW)
+        else:
+            move_file(source_path, destination_path)
+            printlog("Moved file: " + file_name, YELLOW)
 
-    print("Process Done.")
-    logger.info("Process end")
+    printlog("Process Done.")
 
 
 t = TIME
