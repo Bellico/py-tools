@@ -1,4 +1,5 @@
 import os
+from collections import deque
 import shutil
 import time
 import re
@@ -123,28 +124,55 @@ def move_file(file_source_path: str, file_destination_path: str):
     os.remove(file_source_path)
 
 
-def is_file_match(entry_name: str) -> bool:
+def match_a_file(entry_name: str, mandatories: []) -> []:
     reasons = []
-    for exp in MANDATORY_FILES:
+    for exp in mandatories:
         regex = exp.replace('*', '.*')
         if re.fullmatch(regex, entry_name, re.IGNORECASE) is not None:
             reasons.append(exp)
 
-    return True if len(reasons) > 0 else False
+    return reasons
 
 
-def have_all_mandatory_file(folder_path: str) -> bool:
-    match_count = 0
-    for entry in os.scandir(folder_path):
-        if is_file_match(entry.name):
-            match_count += 1
+def get_item_excluded(origin: [], element: []) -> []:
+    return [i for i in origin if i not in element]
 
-    return True if match_count == len(MANDATORY_FILES) else False
+
+def find_matching_pattern(folder_path: str) -> []:
+    sublevel_to_look = [folder_path]
+    matching_pattern = []
+    targeted_files = MANDATORY_FILES
+
+    # Scan level
+    depth = 0
+    while any(sublevel_to_look) and depth <= 10:
+        temp_to_look = deque()
+
+        for path in sublevel_to_look:
+            for entry in os.scandir(path):
+                matches = match_a_file(entry.name, targeted_files)
+
+                if any(matches):
+                    matching_pattern.extend(matches)
+                    targeted_files = get_item_excluded(
+                        targeted_files, matching_pattern)
+
+                if len(matching_pattern) == len(MANDATORY_FILES):
+                    return matching_pattern
+
+                if entry.is_dir():
+                    temp_to_look.append(entry.path)
+
+        depth = depth + 1
+        sublevel_to_look.clear()
+        sublevel_to_look.extend(temp_to_look)
+
+    return matching_pattern
 
 
 def move_files():
     file_list = os.listdir(SOURCE_FOLDER)
-    if len(file_list) == 0:
+    if not any(file_list):
         print("Nothing to move")
         return
 
@@ -156,16 +184,20 @@ def move_files():
         error_path = os.path.join(ERROR_FOLDER, file_name)
         is_dir = os.path.isdir(source_path)
 
-        # Error
+        # Error (existing)
         if is_dir and os.path.exists(destination_path):
             move_folder(source_path, error_path)
             printlog("Folder already in destination: " + file_name, RED)
             continue
 
-        if is_dir and not have_all_mandatory_file(source_path):
-            move_folder(source_path, error_path)
-            printlog("Folder with errors: " + file_name, RED)
-            continue
+        # Error (missing patterns)
+        if is_dir:
+            matching_pattern = find_matching_pattern(source_path)
+            if len(matching_pattern) < len(MANDATORY_FILES):
+                move_folder(source_path, error_path)
+                printlog("Moved Folder in error: " + file_name +
+                         " => Missings : " + str(get_item_excluded(MANDATORY_FILES, matching_pattern)), RED)
+                continue
 
         # Copy
         if DUPLICATE_FOLDER:
