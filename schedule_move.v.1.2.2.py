@@ -19,6 +19,7 @@ ERROR_FOLDER = r"C:\Users\franc\Downloads\error"
 LOG_FILE = r"log.txt"
 TIME = 5  # Démarrer le décompte de 1 minutes (60 secondes)
 RETRY_DELAY = [5, 10, 15, 30, 60]
+SUB_LEVEL_MANDATORY_DEPTH = 5
 
 MANDATORY_FILES = [
     'fichierrequis.xml',
@@ -145,7 +146,7 @@ def find_matching_pattern(folder_path: str) -> []:
 
     # Scan level
     depth = 0
-    while any(sublevel_to_look) and depth <= 10:
+    while any(sublevel_to_look) and depth <= SUB_LEVEL_MANDATORY_DEPTH:
         temp_to_look = deque()
 
         for path in sublevel_to_look:
