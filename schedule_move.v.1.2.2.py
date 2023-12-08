@@ -187,7 +187,7 @@ def move_files():
 
         # Error (existing)
         if is_dir and os.path.exists(destination_path):
-            move_folder(source_path, error_path)
+            shutil.move(source_path, error_path)
             printlog("Folder already in destination: " + file_name, RED)
             continue
 
@@ -195,7 +195,7 @@ def move_files():
         if is_dir:
             matching_pattern = find_matching_pattern(source_path)
             if len(matching_pattern) < len(MANDATORY_FILES):
-                move_folder(source_path, error_path)
+                shutil.move(source_path, error_path)
                 printlog("Moved Folder in error: " + file_name +
                          " => Missings : " + str(get_item_excluded(MANDATORY_FILES, matching_pattern)), RED)
                 continue
