@@ -21,9 +21,12 @@ TIME = 5  # Démarrer le décompte de 1 minutes (60 secondes)
 RETRY_DELAY = [5, 10, 15, 30, 60]
 SUB_LEVEL_MANDATORY_DEPTH = 5
 
-MANDATORY_FILES = [
+MANDATORY_FILES_1 = [
     'fichierrequis.xml',
     '*.ppt',
+]
+
+MANDATORY_FILES_2 = [
 ]
 
 logging.basicConfig(filename=LOG_FILE, level=logging.INFO,
@@ -85,6 +88,27 @@ def try_copy(file_source_path: str, file_destination_path: str, retry_count=0) -
             return try_copy(file_source_path, file_destination_path, retry_count + 1)
 
 
+def try_move(source_path: str, destination_path: str, retry_count=0) -> int:
+    try:
+        shutil.move(source_path, destination_path)
+        return 0
+    except Exception as inst:
+        # Delete for clean retry
+        if os.path.exists(destination_path):
+            shutil.rmtree(destination_path)
+
+        if retry_count == len(RETRY_DELAY):
+            logger.error("ERROR during move for :" +
+                         destination_path + " => " + str(inst))
+            print(RED + "Failed to move", destination_path, EC)
+            return 1
+        else:
+            print(YELLOW + "ERROR MOVE... new attempt of", source_path,
+                  "in", RETRY_DELAY[retry_count], "seconds", EC)
+            time.sleep(RETRY_DELAY[retry_count])
+            return try_move(source_path, destination_path, retry_count + 1)
+
+
 def copy_folder(folder_source_path: str, folder_destination_path: str) -> int:
     error_count = 0
 
@@ -115,14 +139,20 @@ def copy_folder(folder_source_path: str, folder_destination_path: str) -> int:
     return error_count
 
 
-def move_folder(folder_source_path: str, folder_destination_path: str):
-    copy_folder(folder_source_path, folder_destination_path)
-    shutil.rmtree(folder_source_path)
+def copydelete_folder(folder_source_path: str, folder_destination_path: str):
+    error_count = copy_folder(folder_source_path, folder_destination_path)
+    if error_count == 0:
+        shutil.rmtree(folder_source_path)
+    else:
+        shutil.rmtree(folder_destination_path)
 
 
-def move_file(file_source_path: str, file_destination_path: str):
-    try_copy(file_source_path, file_destination_path)
-    os.remove(file_source_path)
+def copydelete_file(file_source_path: str, file_destination_path: str):
+    error_count = try_copy(file_source_path, file_destination_path)
+    if error_count == 0:
+        os.remove(file_source_path)
+    else:
+        shutil.rmtree(file_destination_path)
 
 
 def match_a_file(entry_name: str, mandatories: []) -> []:
@@ -139,10 +169,10 @@ def get_item_excluded(origin: [], element: []) -> []:
     return [i for i in origin if i not in element]
 
 
-def find_matching_pattern(folder_path: str) -> []:
+def find_matching_pattern(folder_path: str, mandatory_files: []) -> []:
     sublevel_to_look = [folder_path]
     matching_pattern = []
-    targeted_files = MANDATORY_FILES
+    targeted_files = mandatory_files
 
     # Scan level
     depth = 0
@@ -158,7 +188,7 @@ def find_matching_pattern(folder_path: str) -> []:
                     targeted_files = get_item_excluded(
                         targeted_files, matching_pattern)
 
-                if len(matching_pattern) == len(MANDATORY_FILES):
+                if len(matching_pattern) == len(mandatory_files):
                     return matching_pattern
 
                 if entry.is_dir():
@@ -169,6 +199,18 @@ def find_matching_pattern(folder_path: str) -> []:
         sublevel_to_look.extend(temp_to_look)
 
     return matching_pattern
+
+
+def search_missing_patterns(source_path: str):
+    matching_pattern = find_matching_pattern(source_path, MANDATORY_FILES_1)
+    if len(matching_pattern) < len(MANDATORY_FILES_1):
+        return str(get_item_excluded(MANDATORY_FILES_1, matching_pattern))
+
+    matching_pattern = find_matching_pattern(source_path, MANDATORY_FILES_2)
+    if len(matching_pattern) < len(MANDATORY_FILES_2):
+        return str(get_item_excluded(MANDATORY_FILES_2, matching_pattern))
+
+    return None
 
 
 def move_files():
@@ -187,17 +229,19 @@ def move_files():
 
         # Error (existing)
         if is_dir and os.path.exists(destination_path):
-            shutil.move(source_path, error_path)
-            printlog("Folder already in destination: " + file_name, RED)
+            result = try_move(source_path, error_path)
+            if result == 0:
+                printlog("Folder already in destination: " + file_name, RED)
             continue
 
         # Error (missing patterns)
         if is_dir:
-            matching_pattern = find_matching_pattern(source_path)
-            if len(matching_pattern) < len(MANDATORY_FILES):
-                shutil.move(source_path, error_path)
-                printlog("Moved Folder in error: " + file_name +
-                         " => Missings : " + str(get_item_excluded(MANDATORY_FILES, matching_pattern)), RED)
+            missings = search_missing_patterns(source_path)
+            if missings is not None:
+                result = try_move(source_path, error_path)
+                if result == 0:
+                    printlog("Moved Folder in error: " + file_name +
+                             " => Missings : " + missings, RED)
                 continue
 
         # Copy
@@ -213,10 +257,10 @@ def move_files():
 
         # Move
         if is_dir:
-            move_folder(source_path, destination_path)
+            copydelete_folder(source_path, destination_path)
             printlog("Moved folder: " + file_name, YELLOW)
         else:
-            move_file(source_path, destination_path)
+            copydelete_file(source_path, destination_path)
             printlog("Moved file: " + file_name, YELLOW)
 
     printlog("Process Done.")
