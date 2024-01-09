@@ -202,15 +202,15 @@ def find_matching_pattern(folder_path: str, mandatory_files: []) -> []:
 
 
 def search_missing_patterns(source_path: str):
-    matching_pattern = find_matching_pattern(source_path, MANDATORY_FILES_1)
-    if len(matching_pattern) < len(MANDATORY_FILES_1):
-        return str(get_item_excluded(MANDATORY_FILES_1, matching_pattern))
+    matching_pattern1 = find_matching_pattern(source_path, MANDATORY_FILES_1)
+    if len(matching_pattern1) == len(MANDATORY_FILES_1):
+        return None
 
-    matching_pattern = find_matching_pattern(source_path, MANDATORY_FILES_2)
-    if len(matching_pattern) < len(MANDATORY_FILES_2):
-        return str(get_item_excluded(MANDATORY_FILES_2, matching_pattern))
+    matching_pattern2 = find_matching_pattern(source_path, MANDATORY_FILES_2)
+    if len(matching_pattern2) == len(MANDATORY_FILES_2):
+        return None
 
-    return None
+    return str(get_item_excluded(MANDATORY_FILES_1, matching_pattern1)) + str(get_item_excluded(MANDATORY_FILES_2, matching_pattern2))
 
 
 def move_files():
