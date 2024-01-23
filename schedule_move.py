@@ -109,6 +109,23 @@ def try_move(source_path: str, destination_path: str, retry_count=0) -> int:
             return try_move(source_path, destination_path, retry_count + 1)
 
 
+def try_delete(path: str, retry_count=0) -> int:
+    try:
+        shutil.rmtree(path)
+        return 0
+    except Exception as inst:
+        if retry_count == len(RETRY_DELAY):
+            logger.error("ERROR during delete of :" +
+                         path + " => " + str(inst))
+            print(RED + "Failed to delete", path, EC)
+            return 1
+        else:
+            print(YELLOW + "ERROR DELETE... new attempt of", path,
+                  "in", RETRY_DELAY[retry_count], "seconds", EC)
+            time.sleep(RETRY_DELAY[retry_count])
+            return try_delete(path, retry_count + 1)
+
+
 def copy_folder(folder_source_path: str, folder_destination_path: str) -> int:
     error_count = 0
 
@@ -142,7 +159,9 @@ def copy_folder(folder_source_path: str, folder_destination_path: str) -> int:
 def copydelete_folder(folder_source_path: str, folder_destination_path: str):
     error_count = copy_folder(folder_source_path, folder_destination_path)
     if error_count == 0:
-        shutil.rmtree(folder_source_path)
+        error_delete = try_delete(folder_source_path)
+        if error_delete != 0:
+            shutil.rmtree(folder_destination_path)
     else:
         shutil.rmtree(folder_destination_path)
 
