@@ -18,7 +18,7 @@ DESTINATION_FOLDER = r"C:\Users\franc\Downloads\dest"
 ERROR_FOLDER = r"C:\Users\franc\Downloads\error"
 LOG_FILE = r"log.txt"
 TIME = 5  # Démarrer le décompte de 1 minutes (60 secondes)
-RETRY_DELAY = [5, 10, 15, 30, 60]
+RETRY_DELAY = [5, 10]
 SUB_LEVEL_MANDATORY_DEPTH = 5
 
 MANDATORY_FILES_1 = [
@@ -292,7 +292,7 @@ def countdown():
     global t
 
     if t > 0:
-        print("Next run in", t, "seconds.", end="")
+        print("Next run in", t, "seconds.", end="\r")
         t -= 1
     else:
         print(end="\n")
