@@ -159,9 +159,7 @@ def copy_folder(folder_source_path: str, folder_destination_path: str) -> int:
 def copydelete_folder(folder_source_path: str, folder_destination_path: str):
     error_count = copy_folder(folder_source_path, folder_destination_path)
     if error_count == 0:
-        error_delete = try_delete(folder_source_path)
-        if error_delete != 0:
-            shutil.rmtree(folder_destination_path)
+        try_delete(folder_source_path)
     else:
         shutil.rmtree(folder_destination_path)
 
@@ -292,7 +290,7 @@ def countdown():
     global t
 
     if t > 0:
-        print("Next run in", t, "seconds.", end="\r")
+        print("Next run in", t, "seconds.", end="")
         t -= 1
     else:
         print(end="\n")
