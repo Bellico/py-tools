@@ -230,6 +230,49 @@ def search_missing_patterns(source_path: str):
     return str(get_item_excluded(MANDATORY_FILES_1, matching_pattern1)) + str(get_item_excluded(MANDATORY_FILES_2, matching_pattern2))
 
 
+def move_file(file_name: str):
+    source_path = os.path.join(SOURCE_FOLDER, file_name)
+    destination_path = os.path.join(DESTINATION_FOLDER, file_name)
+    error_path = os.path.join(ERROR_FOLDER, file_name)
+    is_dir = os.path.isdir(source_path)
+
+    # Error (existing)
+    if is_dir and os.path.exists(destination_path):
+        result = try_move(source_path, error_path)
+        if result == 0:
+            printlog("Folder already in destination: " + file_name, RED)
+        return
+
+    # Error (missing patterns)
+    if is_dir:
+        missings = search_missing_patterns(source_path)
+        if missings is not None:
+            result = try_move(source_path, error_path)
+            if result == 0:
+                printlog("Moved Folder in error: " + file_name +
+                         " => Missings : " + missings, RED)
+            return
+
+    # Copy
+    if DUPLICATE_FOLDER:
+        duplicate_path = os.path.join(DUPLICATE_FOLDER, file_name)
+
+        if is_dir:
+            copy_folder(source_path, duplicate_path)
+            printlog("Copied folder : " + file_name, YELLOW)
+        else:
+            try_copy(source_path, duplicate_path)
+            printlog("Copied file : " + file_name, YELLOW)
+
+    # Move
+    if is_dir:
+        copydelete_folder(source_path, destination_path)
+        printlog("Moved folder: " + file_name, YELLOW)
+    else:
+        copydelete_file(source_path, destination_path)
+        printlog("Moved file: " + file_name, YELLOW)
+
+
 def move_files():
     file_list = os.listdir(SOURCE_FOLDER)
     if not any(file_list):
@@ -239,46 +282,10 @@ def move_files():
     printlog("Processing start:")
 
     for file_name in file_list:
-        source_path = os.path.join(SOURCE_FOLDER, file_name)
-        destination_path = os.path.join(DESTINATION_FOLDER, file_name)
-        error_path = os.path.join(ERROR_FOLDER, file_name)
-        is_dir = os.path.isdir(source_path)
-
-        # Error (existing)
-        if is_dir and os.path.exists(destination_path):
-            result = try_move(source_path, error_path)
-            if result == 0:
-                printlog("Folder already in destination: " + file_name, RED)
-            continue
-
-        # Error (missing patterns)
-        if is_dir:
-            missings = search_missing_patterns(source_path)
-            if missings is not None:
-                result = try_move(source_path, error_path)
-                if result == 0:
-                    printlog("Moved Folder in error: " + file_name +
-                             " => Missings : " + missings, RED)
-                continue
-
-        # Copy
-        if DUPLICATE_FOLDER:
-            duplicate_path = os.path.join(DUPLICATE_FOLDER, file_name)
-
-            if is_dir:
-                copy_folder(source_path, duplicate_path)
-                printlog("Copied folder : " + file_name, YELLOW)
-            else:
-                try_copy(source_path, duplicate_path)
-                printlog("Copied file : " + file_name, YELLOW)
-
-        # Move
-        if is_dir:
-            copydelete_folder(source_path, destination_path)
-            printlog("Moved folder: " + file_name, YELLOW)
-        else:
-            copydelete_file(source_path, destination_path)
-            printlog("Moved file: " + file_name, YELLOW)
+        try:
+            move_file(file_name)
+        except Exception as inst:
+            printlog("Folder in error: " + file_name + " => " + str(inst), RED)
 
     printlog("Process Done.")
 
