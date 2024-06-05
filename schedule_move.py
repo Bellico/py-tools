@@ -20,6 +20,7 @@ LOG_FILE = r"log.txt"
 TIME = 5  # Démarrer le décompte de 1 minutes (60 secondes)
 RETRY_DELAY = [5, 10]
 SUB_LEVEL_MANDATORY_DEPTH = 5
+MANDATORY_MOVE_ERROR = True
 
 MANDATORY_FILES_1 = [
     'fichierrequis.xml',
@@ -247,10 +248,11 @@ def move_file(file_name: str):
     if is_dir:
         missings = search_missing_patterns(source_path)
         if missings is not None:
-            result = try_move(source_path, error_path)
-            if result == 0:
-                printlog("Moved Folder in error: " + file_name +
-                         " => Missings : " + missings, RED)
+            if MANDATORY_MOVE_ERROR :
+                result = try_move(source_path, error_path)
+                if result == 0:
+                    printlog("Moved Folder in error: " + file_name +
+                            " => Missings : " + missings, RED)
             return
 
     # Copy
