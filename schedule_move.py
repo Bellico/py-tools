@@ -41,7 +41,7 @@ def printlog(messagelog, color=""):
 
 
 def copy_folder(file_source_path, file_destination_path) -> int:
-    command = f'robocopy "{file_source_path}" "{file_destination_path}" /e /njh /njs /ndl /nc /ns {RETRY}'
+    command = f'robocopy "{file_source_path}" "{file_destination_path}" /e /njh /njs /ndl /nc /ns /log+:log.txt {RETRY}'
     result = subprocess.run(command, shell=True, text=True)
 
     return result.returncode
@@ -146,7 +146,8 @@ def dispatch(file_name: str):
         if MANDATORY_MOVE_ERROR:
             move_safe_folder(source_path, error_path)
             printlog("Moved Folder in error: " + file_name + " => Missings : " + missings, RED)
-        return
+        else:
+            printlog("Folder incomplete: " + file_name + " => Missings : " + missings, RED)
 
     # Copy
     if DUPLICATE_FOLDER:
