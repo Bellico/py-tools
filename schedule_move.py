@@ -148,6 +148,7 @@ def dispatch(file_name: str):
             printlog("Moved Folder in error: " + file_name + " => Missings : " + missings, RED)
         else:
             printlog("Folder incomplete: " + file_name + " => Missings : " + missings, RED)
+        return
 
     # Copy
     if DUPLICATE_FOLDER:
