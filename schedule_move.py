@@ -120,7 +120,10 @@ def search_missing_patterns(source_path: str):
     if len(matching_pattern2) == len(MANDATORY_FILES_2):
         return None
 
-    return str(get_item_excluded(MANDATORY_FILES_1, matching_pattern1)) + str(get_item_excluded(MANDATORY_FILES_2, matching_pattern2))
+    if len(matching_pattern1) > len(matching_pattern2):
+        return str(get_item_excluded(MANDATORY_FILES_1, matching_pattern1))
+
+    return str(get_item_excluded(MANDATORY_FILES_2, matching_pattern2))
 
 
 def dispatch(file_name: str):
